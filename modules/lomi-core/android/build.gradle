@@ -1,0 +1,38 @@
+// Android library that compiles the shared Java game core straight from the repo (single source of truth)
+// and exposes it to React Native as the "LomiCore" TurboModule.
+apply plugin: 'com.android.library'
+apply plugin: 'com.facebook.react'
+
+def coreSrc = new File(projectDir, '../../../../core/src/main/java').canonicalPath
+
+android {
+    namespace 'com.lomiking.rn'
+    compileSdk rootProject.ext.has('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 35
+    defaultConfig {
+        minSdk rootProject.ext.has('minSdkVersion') ? rootProject.ext.minSdkVersion : 24
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+    sourceSets {
+        main {
+            java.srcDirs += [coreSrc]
+        }
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'com.facebook.react:react-android'
+}
+
+react {
+    jsRootDir = file('../src')
+    libraryName = 'LomiCoreSpec'
+    codegenJavaPackageName = 'com.lomiking.rn'
+}

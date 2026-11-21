@@ -1,0 +1,14 @@
+{
+  "name": "lomi-core",
+  "version": "0.1.0",
+  "description": "Android TurboModule that runs the LomiKing Java game core (../../../core) inside the app.",
+  "main": "src/index.ts",
+  "react-native": "src/index.ts",
+  "private": true,
+  "codegenConfig": {
+    "name": "LomiCoreSpec",
+    "type": "modules",
+    "jsSrcsDir": "src",
+    "android": { "javaPackageName": "com.lomiking.rn" }
+  }
+}
