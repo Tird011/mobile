@@ -1,0 +1,6 @@
+[
+    {
+        "merged": "com.lomiking.rn.lomi-core-release-27:/drawable-v23/abc_control_background_material.xml",
+        "source": "com.lomiking.rn.lomi-core-appcompat-1.7.0-23:/drawable-v23/abc_control_background_material.xml"
+    }
+]

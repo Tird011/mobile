@@ -1,0 +1,9 @@
+com.lomiking.rn.lomi-core-pngs-0 C:\Users\3rdre\LomiKing-BatangasRush\mobile\modules\lomi-core\android\build\generated\res\pngs\release
+com.lomiking.rn.lomi-core-updated_navigation_xml-1 C:\Users\3rdre\LomiKing-BatangasRush\mobile\modules\lomi-core\android\build\generated\updated_navigation_xml\release
+com.lomiking.rn.lomi-core-mergeReleaseResources-2 C:\Users\3rdre\LomiKing-BatangasRush\mobile\modules\lomi-core\android\build\intermediates\incremental\release\mergeReleaseResources\merged.dir
+com.lomiking.rn.lomi-core-mergeReleaseResources-3 C:\Users\3rdre\LomiKing-BatangasRush\mobile\modules\lomi-core\android\build\intermediates\incremental\release\mergeReleaseResources\stripped.dir
+com.lomiking.rn.lomi-core-release-4 C:\Users\3rdre\LomiKing-BatangasRush\mobile\modules\lomi-core\android\build\intermediates\merged_res\release\mergeReleaseResources
+com.lomiking.rn.lomi-core-release-5 C:\Users\3rdre\LomiKing-BatangasRush\mobile\modules\lomi-core\android\build\intermediates\packaged_res\release\packageReleaseResources
+com.lomiking.rn.lomi-core-main-6 C:\Users\3rdre\LomiKing-BatangasRush\mobile\modules\lomi-core\android\src\main\res
+com.lomiking.rn.lomi-core-release-7 C:\Users\3rdre\LomiKing-BatangasRush\mobile\modules\lomi-core\android\src\release\res
+gradleHome-0 C:\Users\3rdre\.gradle
