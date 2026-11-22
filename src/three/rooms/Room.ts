@@ -1,7 +1,11 @@
 import * as THREE from 'three';
 import type { GameEvent, Snapshot } from '../../engine/types';
 import { loadModel, type ModelId } from '../assets';
-import { addLights, toonify } from '../toon';
+import { mergeStatic, toonify } from '../toon';
+import type { LightRig } from '../world/Atmosphere';
+import { Beams } from '../world/Beams';
+import type { Lighting } from '../world/DayCycle';
+import { buildSurroundings, type RoomName } from '../world/Surroundings';
 
 const FOOD_NODE: Record<string, string> = {
   lomi_batangas: 'LomiBowl', lomi_overload: 'LomiBowl', tapsilog: 'TapsilogPlate', chicken_chami: 'ChamiPlate', lumpiang_shanghai: 'ShanghaiPlate',
@@ -15,11 +19,32 @@ export abstract class Room {
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(45, 1, 0.05, 200);
   ready = false;
+  /** How Atmosphere should light this room (sun direction, shadow box, night lamps, fog). */
+  rig: LightRig = { azimuth: 20, center: [0, 0, 0], extent: 9 };
+  /** Window panes found in the environment: sunbeams pour through them. */
+  protected windows: THREE.Object3D[] = [];
+  private beams?: Beams;
 
-  constructor(background: number) {
-    this.scene.background = new THREE.Color(background);
-    addLights(this.scene);
+  constructor(_legacyBackground?: number) {}
+
+  /** Builds the world outside the room and the light beams/motes inside it. Call at the end of build(). */
+  protected async world(name: RoomName | null, volume: THREE.Box3, outdoor = false) {
+    if (name) await buildSurroundings(name, this.scene);
+    this.beams = new Beams(this.scene, outdoor ? [] : this.windows, volume, outdoor, outdoor ? 70 : 90);
   }
+  /** A small zoom "punch" on good moments (served, step done, level up): makes each success land. */
+  private punchV = 0;
+  punch(amount = 1) { this.punchV = Math.min(1.5, this.punchV + amount); }
+  feelEvent(e: GameEvent) {
+    switch (e.type) {
+      case 'COOKING_STEP_COMPLETED': this.punch(0.35); break;
+      case 'CUSTOMER_SERVED': case 'CUSTOMER_PAID': case 'TABLE_CLEANED': this.punch(0.5); break;
+      case 'COOKING_FINISHED': if (!e.byStaff) this.punch(0.8); break;
+      case 'LEVEL_UP': case 'UPGRADE_BOUGHT': case 'WORKER_HIRED': this.punch(1); break;
+    }
+  }
+  /** Called by Stage every frame with the shared lighting state. */
+  updateWorld(L: Lighting, sunDir: THREE.Vector3, t: number) { this.beams?.update(L, sunDir, t); }
 
   abstract build(): Promise<void>;
   abstract update(s: Snapshot, dt: number, t: number): void;
@@ -69,6 +94,8 @@ export abstract class Room {
   /** True while a timed close-up (e.g. "customer ordered") is still playing. */
   protected get holdingFocus() { return this.clock < this.focusUntil; }
   private clock = 0;
+  private breathe = new THREE.Vector3();
+  private baseFov = 45;
 
   protected updateCamera(dt: number, t: number) {
     this.clock = t;
@@ -76,16 +103,21 @@ export abstract class Room {
     this.camInit = true;
     this.camera.position.lerp(this.wantPos, k);
     this.curLook.lerp(this.wantLook, k);
-    const breathe = new THREE.Vector3(Math.sin(t * 0.37) * 0.06, Math.sin(t * 0.53) * 0.04, 0);
+    const breathe = this.breathe.set(Math.sin(t * 0.37) * 0.06, Math.sin(t * 0.53) * 0.04, 0);
     this.camera.position.add(breathe);
     this.camera.lookAt(this.curLook);
     this.camera.position.sub(breathe);
+    if (this.punchV > 0.001) {
+      this.punchV *= Math.exp(-dt * 6);
+      this.camera.fov = this.baseFov - this.punchV * 2.6;
+      this.camera.updateProjectionMatrix();
+    }
   }
 
   setAspect(aspect: number) {
     this.camera.aspect = aspect;
     this.portrait = aspect < 0.8;
-    this.camera.fov = this.portrait ? 60 : 45;
+    this.camera.fov = this.baseFov = this.portrait ? 60 : 45;
     this.camera.updateProjectionMatrix();
     this.wide();
   }
@@ -102,7 +134,9 @@ export abstract class Room {
 
   protected async env(id: ModelId, skip: RegExp = /^(Floor|Ground|Asphalt|Grass|Sidewalk|BackWall|Wall)/) {
     const g = (await loadModel(id)).scene.clone(true);
-    toonify(g, { outline: 0.012, skipOutline: (n) => skip.test(n) });
+    mergeStatic(g, /^(Window|Door|Kawali|Knife|ChoppingBoard|Scooter|TV|Walis|Glass)/, skip);
+    toonify(g, { outline: 0.012, skipOutline: (n) => skip.test(n) || n.startsWith('Skip~') });
+    g.traverse((o) => { if (/^Window$|^Window\./.test(o.name) && (o as THREE.Mesh).isMesh) this.windows.push(o); });
     this.scene.add(g);
     return g;
   }

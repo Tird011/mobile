@@ -9,7 +9,7 @@ import { Room } from './Room';
 export class TitleRoom extends Room {
   private kaloy!: Character;
   private neon?: THREE.Object3D;
-  constructor() { super(0xbfe6f7); }
+  constructor() { super(); }
   async build() {
     await this.env('lomi_house', /^(Ground|Path|Platform)/);
     this.kaloy = await Character.create('mang_kaloy');
@@ -20,6 +20,8 @@ export class TitleRoom extends Room {
     this.neon.position.set(0, 4.35, 1.95);
     this.neon.visible = false;
     this.scene.add(this.neon);
+    this.rig = { azimuth: 120, center: [0, 0, 0], extent: 10, lamps: [[0, 2.6, 2.4], [0, 2.9, 4.6]], fog: [45, 260] };
+    await this.world('title', new THREE.Box3(new THREE.Vector3(-8, 0.3, -5), new THREE.Vector3(8, 3.5, 7)), true);
     this.ready = true;
   }
   update(s: Snapshot | null, dt: number, t: number) {

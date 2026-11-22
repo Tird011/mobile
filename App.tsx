@@ -8,6 +8,8 @@ import { GameClient } from './src/engine/GameClient';
 import { GameContext, useSnapshot } from './src/engine/useGame';
 import { clearSave, readSave, summarize, type SaveSummary } from './src/engine/saveStore';
 import { Stage } from './src/three/Stage';
+import { Feel } from './src/feel/Feel';
+import { loadPrefs } from './src/engine/prefs';
 import { GameScreen } from './src/ui/GameScreen';
 import { TitleScreen } from './src/ui/TitleScreen';
 import { C } from './src/ui/theme';
@@ -19,6 +21,13 @@ export default function App() {
   const [saveJson, setSaveJson] = useState<string | null>(null);
   const [save, setSave] = useState<SaveSummary | null>(null);
   useEffect(() => { readSave().then((j) => { setSaveJson(j); setSave(summarize(j)); }); }, []);
+  // sound, music and vibration follow the game
+  useEffect(() => {
+    loadPrefs().then(() => Feel.init()).then(() => Feel.follow(client.getSnapshot()));
+    const offE = client.onEvent((e) => Feel.onEvent(e));
+    const offS = client.subscribe(() => Feel.follow(client.getSnapshot()));
+    return () => { offE(); offS(); };
+  }, [client]);
 
   const connect = useCallback(() => {
     setStatus('connecting');
@@ -32,7 +41,11 @@ export default function App() {
     stage.current.start();
   }, [client]);
 
-  const onLocalInput = useCallback((t: string) => stage.current?.localInput(t), []);
+  const onLocalInput = useCallback((t: string) => {
+    stage.current?.localInput(t);
+    const s = client.getSnapshot();
+    Feel.gesture(t, s?.cooking?.step.step ?? s?.tasks.find((k) => k.status === 'ACTIVE' && k.interactive)?.type);
+  }, [client]);
 
   return (
     <GameContext.Provider value={client}>

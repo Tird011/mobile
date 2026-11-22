@@ -4,6 +4,7 @@ import { loadModel } from '../assets';
 import { Character } from '../Character';
 import { toonify } from '../toon';
 import { Crowd, StaffCrew } from './Crowd';
+import { MeshPool } from '../Particles';
 import { Room } from './Room';
 
 // Six table spots, same as blender/environments.py TABLES (Blender x,y -> three x,-y). Bought tables fill them in order.
@@ -20,6 +21,7 @@ interface Spark { mesh: THREE.Mesh; vel: THREE.Vector3; life: number }
 
 /** Dining area: tables (as many as bought), decor, eating customers, messes, and helpers doing chores. */
 export class DinerRoom extends Room {
+  private pool = new MeshPool(this.scene);
   private kaloy!: Character;
   private crowd!: Crowd;
   private crew!: StaffCrew;
@@ -33,7 +35,7 @@ export class DinerRoom extends Room {
   private tv?: THREE.Mesh;
   private sparks: Spark[] = [];
   private props: Record<string, THREE.Object3D | null> = {};
-  constructor() { super(0xffd6d8); }
+  constructor() { super(); }
 
   async build() {
     const env = await this.env('diner');
@@ -63,6 +65,8 @@ export class DinerRoom extends Room {
       this.dust.add(d);
     }
     this.setCameras([[0, 5.6, 6.4], [0, 0.3, -1.0]], [[0, 7.6, 7.8], [0, -1.0, -1.3]]);
+    this.rig = { azimuth: 15, center: [0, 0, -0.6], extent: 8, lamps: [[-1.5, 2.2, -0.6], [1.5, 2.2, -2.6]], fog: [35, 230], interior: true };
+    await this.world('diner', new THREE.Box3(new THREE.Vector3(-4.4, 0.3, -4.5), new THREE.Vector3(4.4, 3, 3.2)), false);
     this.ready = true;
   }
 
@@ -205,22 +209,19 @@ export class DinerRoom extends Room {
   }
 
   private steam(x: number, y: number, z: number) {
-    const m = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 }));
+    const m = this.pool.get('sphere', 0xffffff, 0.04, { opacity: 0.55 });
     m.position.set(x + (Math.random() - 0.5) * 0.15, y, z);
-    this.scene.add(m);
     this.sparks.push({ mesh: m, vel: new THREE.Vector3(0, 0.35, 0), life: 1.3 });
   }
   private bubbles() {
-    const m = new THREE.Mesh(new THREE.SphereGeometry(0.03 + Math.random() * 0.03, 8, 6), new THREE.MeshBasicMaterial({ color: 0xe8f6ff, transparent: true, opacity: 0.8 }));
+    const m = this.pool.get('sphere', 0xe8f6ff, 0.03 + Math.random() * 0.03, { opacity: 0.8 });
     m.position.set(SINK.x + (Math.random() - 0.5) * 0.4, SINK.y + 0.05, SINK.z + (Math.random() - 0.5) * 0.6);
-    this.scene.add(m);
     this.sparks.push({ mesh: m, vel: new THREE.Vector3((Math.random() - 0.5) * 0.2, 0.4, 0), life: 1.0 });
   }
   private burst(at: THREE.Vector3, color: number, n: number, speed = 1.6) {
     for (let k = 0; k < n; k++) {
-      const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.035), new THREE.MeshBasicMaterial({ color }));
+      const m = this.pool.get('octa', color, 0.035);
       m.position.copy(at);
-      this.scene.add(m);
       this.sparks.push({ mesh: m, vel: new THREE.Vector3((Math.random() - 0.5) * speed, Math.random() * speed, (Math.random() - 0.5) * speed), life: 0.8 });
     }
   }
@@ -230,7 +231,7 @@ export class DinerRoom extends Room {
       const m = p.mesh.material as THREE.MeshBasicMaterial;
       if (m.transparent) m.opacity = Math.max(0, Math.min(m.opacity, p.life));
     }
-    for (const p of this.sparks) if (p.life <= 0) { p.mesh.removeFromParent(); p.mesh.geometry.dispose(); }
+    for (const p of this.sparks) if (p.life <= 0) this.pool.release(p.mesh);
     this.sparks = this.sparks.filter((p) => p.life > 0);
   }
 

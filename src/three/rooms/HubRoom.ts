@@ -11,7 +11,7 @@ export class HubRoom extends Room {
   private kaloy!: Character;
   private crew!: StaffCrew;
   private scooter?: THREE.Object3D;
-  constructor() { super(0xffd6d8); }
+  constructor() { super(); }
   async build() {
     const env = await this.env('hub', /^(Ground|Wall)/);
     this.scooter = env.getObjectByName('Scooter') ?? undefined;
@@ -20,6 +20,8 @@ export class HubRoom extends Room {
     this.scene.add(this.kaloy.root);
     this.crew = new StaffCrew(this.scene, (c) => c.place(-2.6, 0, 1.2, 0.6));
     this.setCameras([[0.4, 2.9, 6.6], [0.2, 0.9, -0.6]], [[0.2, 4.6, 9.0], [0.0, -0.6, -0.6]]);
+    this.rig = { azimuth: -35, center: [0, 0, 0], extent: 9, lamps: [[2, 2.6, -1.0], [0.6, 2.6, 3.6]], fog: [45, 260] };
+    await this.world('hub', new THREE.Box3(new THREE.Vector3(-6, 0.3, -3), new THREE.Vector3(6, 3, 5)), true);
     this.ready = true;
   }
   update(s: Snapshot, dt: number, t: number) {

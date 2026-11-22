@@ -3,6 +3,7 @@ import type { GameEvent, Snapshot } from '../../engine/types';
 import { loadModel, type ModelId } from '../assets';
 import { Character } from '../Character';
 import { toonify } from '../toon';
+import { buildFarRoad, buildRoadside } from '../world/Surroundings';
 import { Room } from './Room';
 
 const SEG = 30;
@@ -19,7 +20,8 @@ export class RoadRoom extends Room {
   private x = 0;
   private dist = 0;
   private shake = 0;
-  constructor() { super(0xbfe6f7); }
+  private far?: THREE.Object3D;
+  constructor() { super(); }
 
   async build() {
     const road = (await loadModel('road')).scene;
@@ -28,6 +30,7 @@ export class RoadRoom extends Room {
       toonify(s, { outline: 0.012, skipOutline: (n) => /^(Asphalt|Grass|Sidewalk|Dash)/.test(n) });
       this.scene.add(s);
       this.segments.push(s);
+      await buildRoadside(s, k);
     }
     const scooter = (await loadModel('scooter')).scene.clone(true);
     toonify(scooter, { outline: 0.01 });
@@ -42,7 +45,10 @@ export class RoadRoom extends Room {
       for (let k = 0; k < 4; k++) { const o = src.clone(true); toonify(o, { outline: 0.012 }); o.visible = false; this.scene.add(o); list.push(o); }
       this.pool.set(type, list);
     }
-    this.scene.fog = new THREE.Fog(0xbfe6f7, 30, 95);
+    this.far = await buildFarRoad();
+    this.scene.add(this.far);
+    this.rig = { azimuth: 150, center: [0, 0, 0], extent: 14, fog: [45, 230] };
+    await this.world(null, new THREE.Box3(), true);
     this.ready = true;
   }
 
@@ -55,6 +61,8 @@ export class RoadRoom extends Room {
     this.shake = Math.max(0, this.shake - dt * 2.5);
     const sx = Math.sin(t * 50) * 0.08 * this.shake;
     this.rider.position.set(this.x + sx, 0, this.dist);
+    this.rig.center[2] = this.dist + 6;
+    if (this.far) this.far.position.z = this.dist;
     this.rider.rotation.z = (laneX(d.lane) - this.x) * 0.12;
     // recycle road tiles under the rider (the road model runs along +Z from 0 to 30)
     const base = Math.floor(this.dist / SEG) * SEG;

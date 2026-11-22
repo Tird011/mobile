@@ -27,6 +27,7 @@ export const MODELS = {
   decor: require('../../assets/models/decor.glb'),
   neon: require('../../assets/models/neon.glb'),
   props: require('../../assets/models/props.glb'),
+  world_kit: require('../../assets/models/world_kit.glb'),
   worker_server: require('../../assets/models/worker_server.glb'),
   worker_cleaner: require('../../assets/models/worker_cleaner.glb'),
   worker_rider: require('../../assets/models/worker_rider.glb'),

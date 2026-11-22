@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { GameEvent, Snapshot, StepView } from '../../engine/types';
 import { Character } from '../Character';
 import { StaffCrew } from './Crowd';
+import { MeshPool } from '../Particles';
 import { Room } from './Room';
 
 const KAWALI = new THREE.Vector3(0.45, 1.27, -0.8);
@@ -26,6 +27,7 @@ interface Particle { mesh: THREE.Mesh; vel: THREE.Vector3; life: number; max: nu
  * to the stove while fanning, stirring and seasoning, and to the bowl while plating.
  */
 export class KitchenRoom extends Room {
+  private pool = new MeshPool(this.scene);
   private kaloy!: Character;
   private crew!: StaffCrew;
   private kawali?: THREE.Object3D;
@@ -52,7 +54,7 @@ export class KitchenRoom extends Room {
   private stir = 0; private chop = 0; private fanPulse = 0; private shake = 0;
   private heat = 0;
   private sessionKey = '';
-  constructor() { super(0xffd6d8); }
+  constructor() { super(); }
 
   async build() {
     const env = await this.env('kitchen', /^(Floor|BackWall|Splash)/);
@@ -85,6 +87,8 @@ export class KitchenRoom extends Room {
       this.prop('Ladle').then((l) => l && c.hold(l));
     });
     this.setCameras([[0.1, 2.55, 2.1], [-0.1, 1.05, -0.65]], [[-0.45, 3.9, 3.9], [-0.45, 0.35, -0.55]]);
+    this.rig = { azimuth: 30, center: [0, 1, 0], extent: 5, lamps: [[0.9, 2.3, -0.6], [-1.4, 2.3, -0.4]], fog: [35, 230], interior: true };
+    await this.world('kitchen', new THREE.Box3(new THREE.Vector3(-3.4, 0.9, -1.5), new THREE.Vector3(3.4, 3, 1.5)), false);
     this.ready = true;
   }
 
@@ -308,29 +312,25 @@ export class KitchenRoom extends Room {
   private drop(id: string, size = 0.035) {
     const n = size > 0.02 ? 3 : 1;
     for (let k = 0; k < n; k++) {
-      const m = new THREE.Mesh(new THREE.SphereGeometry(size, 8, 6), new THREE.MeshToonMaterial({ color: COLOR[id] ?? 0xcccccc }));
+      const m = this.pool.get('sphere', COLOR[id] ?? 0xcccccc, size, { lit: true });
       m.position.set(KAWALI.x + (Math.random() - 0.5) * 0.2, KAWALI.y + 0.6 + Math.random() * 0.2, KAWALI.z + (Math.random() - 0.5) * 0.2);
-      this.scene.add(m);
       this.particles.push({ mesh: m, vel: new THREE.Vector3(0, -0.4, 0), life: 1.0, max: 1.0, kind: 'drop' });
     }
   }
   private puff(x: number, y: number, z: number, spread: number) {
-    const m = new THREE.Mesh(new THREE.SphereGeometry(0.05 + Math.random() * 0.04, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 }));
+    const m = this.pool.get('sphere', 0xffffff, 0.05 + Math.random() * 0.04, { opacity: 0.6 });
     m.position.set(x + (Math.random() - 0.5) * spread, y, z + (Math.random() - 0.5) * spread * 0.7);
-    this.scene.add(m);
     this.particles.push({ mesh: m, vel: new THREE.Vector3((Math.random() - 0.5) * 0.1, 0.45, 0), life: 1.6, max: 1.6, kind: 'steam' });
   }
   private bubble() {
-    const m = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfff6e0 }));
+    const m = this.pool.get('sphere', 0xfff6e0, 0.02);
     const a = Math.random() * Math.PI * 2, r = Math.random() * 0.25;
     m.position.set(KAWALI.x + Math.cos(a) * r, KAWALI.y + 0.2, KAWALI.z + Math.sin(a) * r);
-    this.scene.add(m);
     this.particles.push({ mesh: m, vel: new THREE.Vector3(0, 0.05, 0), life: 0.5, max: 0.5, kind: 'bubble' });
   }
   private spark(x: number, y: number, z: number, color: number) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.02), new THREE.MeshBasicMaterial({ color }));
+    const m = this.pool.get('box', color, 0.02);
     m.position.set(x, y, z);
-    this.scene.add(m);
     this.particles.push({ mesh: m, vel: new THREE.Vector3((Math.random() - 0.5) * 1.2, 0.8 + Math.random(), (Math.random() - 0.5) * 0.6), life: 0.5, max: 0.5, kind: 'spark' });
   }
   private updateParticles(dt: number) {
@@ -339,12 +339,12 @@ export class KitchenRoom extends Room {
       if (p.kind === 'drop') { p.vel.y -= 6 * dt; if (p.mesh.position.y < KAWALI.y + 0.15) p.life = Math.min(p.life, 0.05); }
       if (p.kind === 'spark') p.vel.y -= 5 * dt;
       if (p.kind === 'steam') { p.mesh.scale.multiplyScalar(1 + dt * 0.8); (p.mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, (p.life / p.max) * 0.6); }
-      if (p.kind === 'bubble') p.mesh.scale.setScalar(1 + (1 - p.life / p.max) * 1.5);
+      if (p.kind === 'bubble') p.mesh.scale.setScalar(p.mesh.userData.s * (1 + (1 - p.life / p.max) * 1.5));
       p.mesh.position.addScaledVector(p.vel, dt);
     }
-    for (const p of this.particles) if (p.life <= 0) { p.mesh.removeFromParent(); p.mesh.geometry.dispose(); }
+    for (const p of this.particles) if (p.life <= 0) this.pool.release(p.mesh);
     this.particles = this.particles.filter((x) => x.life > 0);
-    if (this.particles.length > 140) this.particles.splice(0, this.particles.length - 140).forEach((p) => p.mesh.removeFromParent());
+    if (this.particles.length > 140) this.particles.splice(0, this.particles.length - 140).forEach((p) => this.pool.release(p.mesh));
   }
 
   onLocalInput(type: string) {

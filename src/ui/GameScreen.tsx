@@ -4,6 +4,7 @@ import { useClient, useSnapshot } from '../engine/useGame';
 import type { SceneId, TaskView } from '../engine/types';
 import { Button } from './Button';
 import { Celebrations } from './Celebrations';
+import { SettingsPanel } from './SettingsPanel';
 import { ShopScreen, type ShopTab } from './ShopScreen';
 import { DaySummary } from './DaySummary';
 import { Hud } from './Hud';
@@ -62,6 +63,7 @@ export function GameScreen({ onLocalInput, topInset }: { onLocalInput: (t: strin
           <View style={styles.card}>
             <Text style={styles.title}>Paused</Text>
             <Button testID="resume" label="Resume" tone="green" onPress={() => client.send({ cmd: 'resume' })} />
+            <SettingsPanel />
           </View>
         </View>
       ) : null}

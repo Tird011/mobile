@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Feel } from '../feel/Feel';
 import { C, R, TOUCH } from './theme';
 
 type Tone = 'red' | 'yellow' | 'green' | 'teal' | 'cream';
@@ -15,8 +16,8 @@ export function Button({ label, onPress, tone = 'yellow', disabled, small, style
 }) {
   const [bg, edge, fg] = TONES[tone];
   return (
-    <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress}
-      onPressIn={onPressIn} onPressOut={onPressOut} hitSlop={6} style={[{ opacity: disabled ? 0.45 : 1 }, style]}>
+    <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={onPress ? () => { Feel.press(); onPress(); } : undefined}
+      onPressIn={onPressIn} onPressOut={onPressOut} hitSlop={6} style={({ pressed }) => [{ opacity: disabled ? 0.45 : 1, transform: [{ scale: pressed ? 0.95 : 1 }] }, style]}>
       {({ pressed }) => (
         <View style={[styles.base, { backgroundColor: edge, minHeight: small ? 40 : TOUCH, paddingBottom: pressed ? 2 : 5 }]}>
           <View style={[styles.face, { backgroundColor: bg, paddingVertical: small ? 6 : 10, marginTop: pressed ? 3 : 0 }]}>

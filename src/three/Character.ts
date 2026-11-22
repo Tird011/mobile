@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { FACE_ATLAS, loadModel, loadTexture, type ModelId } from './assets';
-import { toonify } from './toon';
+import { FACE_MATERIALS, mergeStatic, toonify } from './toon';
 
 const EMOTION_COLORS: Record<string, number> = {
   DELIGHTED: 0x3fbf5f, HAPPY: 0x8fd16a, NEUTRAL: 0xf5c84a, IMPATIENT: 0xf08a2c, ANGRY: 0xe0413d,
@@ -26,6 +26,7 @@ export class Character {
   private bubbleBall?: THREE.Mesh;
   private patienceBar?: THREE.Mesh;
   private target = new THREE.Vector3();
+  private tmpD = new THREE.Vector3();
   private facing = 0;
   pose: Pose = 'idle';
   private poseTime = 0;
@@ -37,6 +38,7 @@ export class Character {
     const c = new Character();
     const gltf = await loadModel(id);
     c.model = gltf.scene.clone(true);
+    mergeStatic(c.model, /^(Head|ArmL|ArmR|Face|Hand|Leg)/, /^$/);   // one draw call per colour for the body
     toonify(c.model, { outline: 0.012 });
     c.root.add(c.model);
     c.head = c.model.getObjectByName('Head') ?? undefined;
@@ -50,7 +52,9 @@ export class Character {
       t.repeat.set(0.25, 0.5);
       t.needsUpdate = true;
       c.faceTex = t;
-      face.material = new THREE.MeshBasicMaterial({ map: t, transparent: true, alphaTest: 0.5 });
+      const fm = new THREE.MeshBasicMaterial({ map: t, transparent: true, alphaTest: 0.5 });
+      FACE_MATERIALS.add(fm);
+      face.material = fm;
       face.renderOrder = 2;
       c.setEmote(1, 0);
     }
@@ -109,7 +113,7 @@ export class Character {
     this.arrived = true;
   }
   walkTo(x: number, y: number, z: number, faceWhenArrived?: number) {
-    if (this.target.distanceToSquared(new THREE.Vector3(x, y, z)) < 1e-4) return;
+    if ((this.target.x - x) ** 2 + (this.target.y - y) ** 2 + (this.target.z - z) ** 2 < 1e-4) return;
     this.target.set(x, y, z);
     this.arrived = false;
     if (faceWhenArrived !== undefined) this.facing = faceWhenArrived;
@@ -122,7 +126,7 @@ export class Character {
     this.poseTime += dt;
     this.workPulse = Math.max(0, this.workPulse - dt * 3);
     const pos = this.root.position;
-    const d = new THREE.Vector3().subVectors(this.target, pos);
+    const d = this.tmpD.subVectors(this.target, pos);
     const dist = d.length();
     let walking = false;
     if (dist > 0.02) {

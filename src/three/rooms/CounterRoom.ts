@@ -17,7 +17,7 @@ export class CounterRoom extends Room {
   private plates = new Map<string, THREE.Object3D>();
   private door?: THREE.Object3D;
   private doorOpen = 0;
-  constructor() { super(0xffd6d8); }
+  constructor() { super(); }
 
   async build() {
     const env = await this.env('counter');
@@ -31,6 +31,8 @@ export class CounterRoom extends Room {
       this.prop('Tray').then((p) => p && c.hold(p));
     });
     this.setCameras([[4.2, 3.4, 5.6], [-0.4, 0.9, 0.2]], [[2.6, 6.2, 8.6], [-0.4, -0.4, 0.3]]);
+    this.rig = { azimuth: -20, center: [0, 0, 0], extent: 8.5, lamps: [[-1.4, 2.3, 2.6], [1.3, 2.3, 0.6]], fog: [35, 230], interior: true };
+    await this.world('counter', new THREE.Box3(new THREE.Vector3(-4, 0.3, -4.3), new THREE.Vector3(4, 3, 4.3)), false);
     this.ready = true;
   }
 

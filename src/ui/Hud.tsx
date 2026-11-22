@@ -1,5 +1,5 @@
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Snapshot } from '../engine/types';
 import { KaloyFace } from './KaloyFace';
 import { Bar } from './Bar';
@@ -27,7 +27,7 @@ export function Hud({ s, onPause, onShop }: { s: Snapshot; onPause: () => void; 
             {'★'.repeat(Math.floor(stars))}{stars % 1 ? '½' : ''}<Text style={{ opacity: 0.3 }}>{'★'.repeat(5 - Math.ceil(stars))}</Text>
           </Text>
         </View>
-        <View style={styles.money}><Text style={styles.moneyText}>₱{Math.floor(s.money)}</Text></View>
+        <Money value={Math.floor(s.money)} />
         <Pressable onPress={onPause} accessibilityRole="button" accessibilityLabel="Pause" style={styles.pause} hitSlop={8}>
           <View style={styles.pauseBar} /><View style={styles.pauseBar} />
         </Pressable>
@@ -57,6 +57,8 @@ const styles = StyleSheet.create({
   rep: { color: C.yellowDark, fontSize: 14, marginTop: 2, fontWeight: '900' },
   money: { backgroundColor: C.yellow, borderRadius: R.md, borderWidth: 2.5, borderColor: C.brown, paddingHorizontal: 10, paddingVertical: 6 },
   moneyText: { color: C.brown, fontWeight: '900', fontSize: 17 },
+  gain: { position: 'absolute', right: 4, top: 30, color: C.greenDark, fontWeight: '900', fontSize: 16,
+    textShadowColor: '#fff', textShadowRadius: 4, textShadowOffset: { width: 0, height: 0 } },
   pause: { width: 44, height: 44, marginLeft: 8, borderRadius: 22, backgroundColor: C.red, borderWidth: 2.5, borderColor: C.brown, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
   pauseBar: { width: 6, height: 16, borderRadius: 2, backgroundColor: C.white },
   row2: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -68,3 +70,40 @@ const styles = StyleSheet.create({
   chipText: { color: C.brown, fontWeight: '900', fontSize: 13 },
   dot: { position: 'absolute', top: -4, right: -4, width: 14, height: 14, borderRadius: 7, backgroundColor: C.yellow, borderWidth: 2, borderColor: C.brown },
 });
+
+/** The cash box counts up/down instead of jumping, pops when you earn, and floats a "+₱" above itself. */
+function Money({ value }: { value: number }) {
+  const [shown, setShown] = useState(value);
+  const [gain, setGain] = useState<{ n: number; k: number } | null>(null);
+  const pop = useRef(new Animated.Value(1)).current;
+  const float = useRef(new Animated.Value(0)).current;
+  const prev = useRef(value);
+  useEffect(() => {
+    const from = prev.current, to = value;
+    prev.current = value;
+    if (from === to) return;
+    if (to > from) {
+      setGain({ n: to - from, k: Date.now() });
+      pop.setValue(1.22);
+      Animated.spring(pop, { toValue: 1, friction: 4, tension: 160, useNativeDriver: true }).start();
+      float.setValue(0);
+      Animated.timing(float, { toValue: 1, duration: 900, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start(() => setGain(null));
+    }
+    const t0 = Date.now(), dur = Math.min(700, 250 + Math.abs(to - from) * 4);
+    const id = setInterval(() => {
+      const k = Math.min(1, (Date.now() - t0) / dur);
+      setShown(Math.round(from + (to - from) * (1 - Math.pow(1 - k, 3))));
+      if (k >= 1) clearInterval(id);
+    }, 33);
+    return () => clearInterval(id);
+  }, [value]);
+  return (
+    <View>
+      <Animated.View testID="hud-money" style={[styles.money, { transform: [{ scale: pop }] }]}><Text style={styles.moneyText}>₱{shown}</Text></Animated.View>
+      {gain ? (
+        <Animated.Text key={gain.k} style={[styles.gain, { opacity: float.interpolate({ inputRange: [0, 0.7, 1], outputRange: [1, 1, 0] }),
+          transform: [{ translateY: float.interpolate({ inputRange: [0, 1], outputRange: [6, 34] }) }] }]}>+₱{gain.n}</Animated.Text>
+      ) : null}
+    </View>
+  );
+}
