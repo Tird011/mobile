@@ -9,7 +9,7 @@ const EMOTION_COLORS: Record<string, number> = {
 let atlas: Promise<THREE.Texture> | null = null;
 function faceAtlas() { return (atlas ??= loadTexture(FACE_ATLAS)); }
 
-export type Pose = 'idle' | 'walk' | 'sit' | 'wave' | 'work' | 'stir' | 'chop' | 'fan' | 'ride';
+export type Pose = 'idle' | 'walk' | 'sit' | 'eat' | 'wave' | 'work' | 'stir' | 'chop' | 'fan' | 'ride' | 'wipe' | 'scrub' | 'sweep' | 'carry';
 
 /**
  * One animated character: a clone of a Blender GLB with procedural animation (bobbing, walking,
@@ -69,6 +69,22 @@ export class Character {
     this.bubble = g;
     this.root.add(g);
   }
+
+  private held: THREE.Object3D | null = null;
+  /** Put a prop (rag, ladle, broom, tray...) in the right hand. Props are modelled in metres. */
+  hold(prop: THREE.Object3D | null) {
+    if (this.held === prop) return;
+    if (this.held) this.held.removeFromParent();
+    this.held = prop;
+    if (!prop || !this.armR) return;
+    this.root.updateMatrixWorld(true);
+    const ws = new THREE.Vector3();
+    this.armR.getWorldScale(ws);
+    prop.scale.setScalar(1 / Math.max(ws.x, 1e-3));
+    prop.position.set(-0.26, -0.85, 0.25);
+    this.armR.add(prop);
+  }
+  get holding() { return this.held; }
 
   setEmote(col: number, row: number) {
     if (this.faceTex) this.faceTex.offset.set(col * 0.25, row * 0.5);
@@ -136,6 +152,26 @@ export class Character {
       case 'sit':
         m.position.y = -0.18;
         break;
+      case 'eat':
+        m.position.y = -0.18;
+        ar = -1.0 - Math.max(0, Math.sin(t * 3.2)) * 0.8; al = -0.5;
+        headTilt = Math.sin(t * 3.2) * 0.06;
+        break;
+      case 'wipe':
+        ar = -1.3 + Math.sin(t * 9) * 0.35 - this.workPulse * 0.3; al = -0.6;
+        if (this.armR) this.armR.rotation.z = Math.cos(t * 9) * 0.35;
+        break;
+      case 'scrub':
+        ar = -1.2 + Math.sin(t * 14) * 0.25; al = -1.1 + Math.cos(t * 14) * 0.2;
+        break;
+      case 'sweep':
+        ar = -0.5 + Math.sin(t * 4) * 0.5; al = -0.4 + Math.sin(t * 4) * 0.5;
+        m.rotation.y = Math.sin(t * 4) * 0.15;
+        break;
+      case 'carry':
+        ar = -1.5; al = -1.5;
+        m.position.y = Math.abs(Math.sin(t * 9)) * 0.03;
+        break;
       case 'wave':
         ar = 0; al = -2.4 + Math.sin(t * 12) * 0.4;
         if (this.poseTime > 1.6) this.pose = 'idle';
@@ -156,6 +192,8 @@ export class Character {
         al = -1.2; ar = -1.2; m.position.y = Math.sin(t * 20) * 0.01;
         break;
     }
+    if (pose !== 'wipe' && this.armR) this.armR.rotation.z = 0;
+    if (pose !== 'sweep') m.rotation.y = 0;
     if (this.armL) this.armL.rotation.x = al;
     if (this.armR) this.armR.rotation.x = ar;
     if (this.head) this.head.rotation.z = headTilt;

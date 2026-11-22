@@ -1,4 +1,5 @@
 import { createBridge, type CoreBridge } from './bridge';
+import { writeSave } from './saveStore';
 import type { Catalog, Command, CommandResult, GameEvent, InputType, Snapshot } from './types';
 
 type Listener = () => void;
@@ -20,12 +21,24 @@ export class GameClient {
   private resultListeners = new Set<(r: CommandResult) => void>();
   private running = false;
   private last = 0;
+  private saveDue = false;
+  private lastSave = Date.now();
+  static readonly SAVE_ON = new Set(['DAY_ENDED', 'DAY_STARTED', 'LEVEL_UP', 'UPGRADE_BOUGHT', 'WORKER_HIRED', 'WORKER_TRAINED', 'ACHIEVEMENT_UNLOCKED', 'GOAL_COMPLETED']);
   private lastEmit = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
   error: string | null = null;
   snapshotAt = 0;
 
   constructor(bridge: CoreBridge = createBridge()) { this.bridge = bridge; }
+
+  /** Restore saved progress (title screen). */
+  async load(json: string) {
+    const r = await this.bridge.importSave(json);
+    const first = await this.bridge.step(0, []);
+    this.snapshot = first.snapshot;
+    this.emit();
+    return r;
+  }
 
   async connect(): Promise<void> {
     try {
@@ -67,7 +80,14 @@ export class GameClient {
       this.snapshot = r.snapshot;
       this.snapshotAt = Date.now();
       for (const res of r.results) this.resultListeners.forEach((l) => l(res));
-      for (const ev of r.events) this.eventListeners.forEach((l) => l(ev));
+      for (const ev of r.events) {
+        this.eventListeners.forEach((l) => l(ev));
+        if (GameClient.SAVE_ON.has(ev.type)) this.saveDue = true;
+      }
+      if (r.snapshot.state !== 'MENU' && (this.saveDue || now - this.lastSave > 30000)) {
+        this.saveDue = false; this.lastSave = now;
+        this.bridge.exportSave().then(writeSave).catch(() => {});
+      }
       this.error = null;
       // React UI refreshes at most ~10x a second (or right away when something happened);
       // the 3D stage reads getSnapshot() every frame anyway.

@@ -21,6 +21,10 @@ public class LomiCoreModule extends NativeLomiCoreSpec {
 
     @Override public String catalog() { return bridge.catalog(); }
 
+    @Override public String exportSave() { return bridge.exportSave(); }
+
+    @Override public String importSave(String json) { return bridge.importSave(json); }
+
     @Override public void reset(double seed, double dayLength) {
         GameConfig cfg = GameConfig.defaults().seed((long) seed);
         if (dayLength > 0) cfg.dayLength(dayLength);

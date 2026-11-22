@@ -5,9 +5,11 @@ import { C, R } from './theme';
 
 const LOGO = require('../../assets/logo.png');
 
-export function TitleScreen({ status, error, onStart, onRetry, bridgeLabel, topInset }: {
-  status: 'connecting' | 'ready' | 'error'; error: string | null; onStart: () => void; onRetry: () => void; bridgeLabel: string; topInset: number;
+export function TitleScreen({ status, error, onStart, onContinue, save, onRetry, bridgeLabel, topInset }: {
+  status: 'connecting' | 'ready' | 'error'; error: string | null; onStart: () => void; onContinue: () => void;
+  save: { day: number; level: number; money: number } | null; onRetry: () => void; bridgeLabel: string; topInset: number;
 }) {
+  const [confirmNew, setConfirmNew] = React.useState(false);
   return (
     <View style={[StyleSheet.absoluteFill, { paddingTop: topInset }]} pointerEvents="box-none">
       <Image source={LOGO} style={styles.logo} resizeMode="contain" accessibilityLabel="LomiKing" />
@@ -15,7 +17,13 @@ export function TitleScreen({ status, error, onStart, onRetry, bridgeLabel, topI
       <View style={{ flex: 1 }} pointerEvents="none" />
       <View style={styles.bottom}>
         {status === 'connecting' ? <ActivityIndicator size="large" color={C.red} /> : null}
-        {status === 'ready' ? <Button testID="start" label="Start" tone="red" onPress={onStart} style={{ width: 240 }} /> : null}
+        {status === 'ready' && save ? (
+          <Button testID="continue" label="Continue" sub={`Day ${save.day} · Level ${save.level} · ₱${save.money}`} tone="red" onPress={onContinue} style={{ width: 260 }} />
+        ) : null}
+        {status === 'ready' ? (
+          <Button testID="start" label={save ? (confirmNew ? 'Tap again: erase progress' : 'New game') : 'Start'} tone={save ? 'cream' : 'red'}
+            onPress={() => { if (save && !confirmNew) { setConfirmNew(true); return; } onStart(); }} style={{ width: save ? 220 : 240 }} />
+        ) : null}
         {status === 'error' ? (
           <View style={styles.errCard}>
             <Text style={styles.errTitle}>Can't reach the game logic</Text>

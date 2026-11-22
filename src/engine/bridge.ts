@@ -14,12 +14,16 @@ export interface CoreBridge {
   step(dt: number, commands: Command[]): Promise<StepResult>;
   catalog(): Promise<Catalog>;
   reset(seed?: number, dayLength?: number): Promise<void>;
+  exportSave(): Promise<string>;
+  importSave(json: string): Promise<{ ok: boolean; message: string }>;
 }
 
 class NativeCoreBridge implements CoreBridge {
   readonly kind = 'native' as const;
   readonly label = 'Java core (in app)';
-  constructor(private mod: { step(dt: number, c: string): string; catalog(): string; reset(s: number, d: number): void }) {}
+  constructor(private mod: { step(dt: number, c: string): string; catalog(): string; reset(s: number, d: number): void; exportSave(): string; importSave(j: string): string }) {}
+  async exportSave() { return this.mod.exportSave(); }
+  async importSave(json: string) { return JSON.parse(this.mod.importSave(json)) as { ok: boolean; message: string }; }
   async step(dt: number, commands: Command[]) { return JSON.parse(this.mod.step(dt, JSON.stringify(commands))) as StepResult; }
   async catalog() { return JSON.parse(this.mod.catalog()) as Catalog; }
   async reset(seed = Date.now() % 100000, dayLength = 0) { this.mod.reset(seed, dayLength); }
@@ -36,6 +40,11 @@ class HttpCoreBridge implements CoreBridge {
   }
   step(dt: number, commands: Command[]) { return this.post<StepResult>('/step', { dt, commands }); }
   async catalog() { const r = await fetch(this.base + '/catalog'); return r.json() as Promise<Catalog>; }
+  async exportSave() { const r = await fetch(this.base + '/save'); return r.text(); }
+  async importSave(json: string) {
+    const r = await fetch(this.base + '/load', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: json });
+    return r.json() as Promise<{ ok: boolean; message: string }>;
+  }
   async reset(seed = Date.now() % 100000, dayLength = 0) {
     await this.post('/reset', dayLength > 0 ? { seed, dayLength } : { seed });
   }

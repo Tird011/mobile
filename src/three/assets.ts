@@ -23,6 +23,14 @@ export const MODELS = {
   aso: require('../../assets/models/aso.glb'),
   chicken: require('../../assets/models/chicken.glb'),
   food: require('../../assets/models/food.glb'),
+  table_set: require('../../assets/models/table_set.glb'),
+  decor: require('../../assets/models/decor.glb'),
+  neon: require('../../assets/models/neon.glb'),
+  props: require('../../assets/models/props.glb'),
+  worker_server: require('../../assets/models/worker_server.glb'),
+  worker_cleaner: require('../../assets/models/worker_cleaner.glb'),
+  worker_rider: require('../../assets/models/worker_rider.glb'),
+  worker_cook: require('../../assets/models/worker_cook.glb'),
 } as const;
 export type ModelId = keyof typeof MODELS;
 

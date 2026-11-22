@@ -45,6 +45,7 @@ export function HubPanel({ s, client, catalog, onLocal }: { s: Snapshot; client:
     );
   }
   const ready = s.orders.filter((o) => o.delivery && o.status === 'READY');
+  const rider = s.staff.find((w) => w.role === 'RIDER' && w.hired);
   const lowIds = new Set(s.tasks.filter((t) => t.type === 'RestockTask').map((t) => String(t.ingredientId)));
   const items = (catalog?.ingredients ?? []).slice().sort((a, b) => Number(lowIds.has(b.id)) - Number(lowIds.has(a.id)) || (s.inventory[a.id] ?? 0) - (s.inventory[b.id] ?? 0));
   return (
@@ -52,6 +53,8 @@ export function HubPanel({ s, client, catalog, onLocal }: { s: Snapshot; client:
       {ready.length ? ready.map((o) => (
         <Button key={o.id} testID={`deliver-${o.id}`} tone="red" label="Ride out!" sub={o.summary} onPress={() => client.send({ cmd: 'deliver', orderId: o.id })} />
       )) : <Text style={T.small}>No delivery orders ready. Cook phone orders in the Kitchen first.</Text>}
+      {rider ? <Text style={[T.small, { color: C.tealDark }]}>{rider.name}: {rider.resting ? 'resting' : rider.activity}</Text> : null}
+      {s.progress.level < 4 ? <Text style={T.small}>Phone orders start at level 4.</Text> : null}
       <Text style={[T.name, { marginTop: 4 }]}>Palengke</Text>
       <FlatList data={items} keyExtractor={(i) => i.id} style={{ maxHeight: 220 }} contentContainerStyle={{ gap: 6 }}
         renderItem={({ item }) => <MarketRow item={item} stock={s.inventory[item.id] ?? 0} low={lowIds.has(item.id)} money={s.money} onBuy={onBuy} />} />

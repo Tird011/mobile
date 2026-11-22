@@ -6,6 +6,8 @@ export interface Spec extends TurboModule {
   step(dt: number, commandsJson: string): string;
   catalog(): string;
   reset(seed: number, dayLength: number): void;
+  exportSave(): string;
+  importSave(json: string): string;
 }
 
 export default TurboModuleRegistry.get<Spec>('LomiCore');

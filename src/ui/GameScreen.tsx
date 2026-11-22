@@ -1,8 +1,10 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useClient, useSnapshot } from '../engine/useGame';
 import type { SceneId, TaskView } from '../engine/types';
 import { Button } from './Button';
+import { Celebrations } from './Celebrations';
+import { ShopScreen, type ShopTab } from './ShopScreen';
 import { DaySummary } from './DaySummary';
 import { Hud } from './Hud';
 import { NotesBoard } from './NotesBoard';
@@ -18,6 +20,16 @@ import { Toasts } from './Toasts';
 export function GameScreen({ onLocalInput, topInset }: { onLocalInput: (t: string) => void; topInset: number }) {
   const client = useClient();
   const s = useSnapshot();
+  const [shop, setShop] = useState<ShopTab | null>(null);
+  const [pausedForShop, setPausedForShop] = useState(false);
+  const openShop = useCallback((tab: string = 'upgrades') => {
+    if (s?.state === 'PLAYING') { client.send({ cmd: 'pause' }); setPausedForShop(true); }   // cozy: time stops while shopping
+    setShop(tab as ShopTab);
+  }, [client, s?.state]);
+  const closeShop = useCallback(() => {
+    setShop(null);
+    if (pausedForShop) { client.send({ cmd: 'resume' }); setPausedForShop(false); }
+  }, [client, pausedForShop]);
   const go = useCallback((target: SceneId) => {
     if (!s || target === s.scene.id) return;
     if (s.scene.id !== 'COUNTER' && target !== 'COUNTER') client.send({ cmd: 'goTo', scene: 'COUNTER' });
@@ -33,7 +45,7 @@ export function GameScreen({ onLocalInput, topInset }: { onLocalInput: (t: strin
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       <View style={{ paddingTop: topInset + 6 }} pointerEvents="box-none">
-        <Hud s={s} onPause={() => client.send({ cmd: 'pause' })} />
+        <Hud s={s} onPause={() => client.send({ cmd: 'pause' })} onShop={openShop} />
         {!riding ? <NotesBoard tasks={s.tasks} onPick={pickNote} /> : null}
       </View>
       <View style={{ flex: 1 }} pointerEvents="none" />
@@ -45,7 +57,7 @@ export function GameScreen({ onLocalInput, topInset }: { onLocalInput: (t: strin
         {!riding ? <RoomNav s={s} go={go} /> : <View style={{ height: 14 }} />}
       </View>
       <Toasts />
-      {s.state === 'PAUSED' ? (
+      {s.state === 'PAUSED' && !shop ? (
         <View style={styles.backdrop}>
           <View style={styles.card}>
             <Text style={styles.title}>Paused</Text>
@@ -53,7 +65,9 @@ export function GameScreen({ onLocalInput, topInset }: { onLocalInput: (t: strin
           </View>
         </View>
       ) : null}
-      {s.state === 'DAY_OVER' ? <DaySummary r={s.report} money={s.money} onNext={() => client.send({ cmd: 'nextDay' })} /> : null}
+      {s.state === 'DAY_OVER' && !shop ? <DaySummary s={s} onShop={() => openShop('upgrades')} onNext={() => client.send({ cmd: 'nextDay' })} /> : null}
+      {shop ? <ShopScreen s={s} tab={shop} onClose={closeShop} /> : null}
+      {!shop ? <Celebrations onOpenShop={() => openShop('upgrades')} /> : null}
       {client.error ? <View style={styles.err}><Text style={styles.errText}>{client.error}</Text></View> : null}
     </View>
   );

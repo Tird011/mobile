@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { CustomerView } from '../../engine/types';
+import type { CustomerView, StaffView } from '../../engine/types';
 import type { ModelId } from '../assets';
 import { Character } from '../Character';
 
@@ -25,6 +25,30 @@ export class Crowd {
     for (const [id, c] of this.chars) if (!keep.has(id)) { c.dispose(); this.chars.delete(id); }
   }
 
+  get(id: string) { return this.chars.get(id); }
+  update(dt: number, t: number) { for (const c of this.chars.values()) c.update(dt, t); }
+}
+
+/** Hired helpers shown in a room (Ate Joy, Kuya Dodong, Mang Tonyo, Inday). */
+export class StaffCrew {
+  private chars = new Map<string, Character>();
+  private pending = new Set<string>();
+  constructor(private scene: THREE.Scene, private spawn: (c: Character, s: StaffView) => void) {}
+
+  sync(visible: StaffView[]) {
+    const keep = new Set(visible.map((v) => v.id));
+    for (const v of visible) {
+      if (this.chars.has(v.id) || this.pending.has(v.id)) continue;
+      this.pending.add(v.id);
+      Character.create(v.model as ModelId).then((c) => {
+        this.pending.delete(v.id);
+        this.chars.set(v.id, c);
+        this.scene.add(c.root);
+        this.spawn(c, v);
+      });
+    }
+    for (const [id, c] of this.chars) if (!keep.has(id)) { c.dispose(); this.chars.delete(id); }
+  }
   get(id: string) { return this.chars.get(id); }
   update(dt: number, t: number) { for (const c of this.chars.values()) c.update(dt, t); }
 }

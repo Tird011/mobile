@@ -36,6 +36,9 @@ export function DinerPanel({ s, client, onLocal }: { s: Snapshot; client: GameCl
   }
   return (
     <Panel title="Diner" right={<Text style={T.small}>{waiting} waiting · {eating} eating</Text>}>
+      {s.staff.filter((w) => w.role === 'CLEANER' && w.hired).map((w) => (
+        <Text key={w.id} style={[T.small, { color: C.tealDark }]}>{w.name}: {w.resting ? 'resting' : w.activity}</Text>
+      ))}
       {chores.length ? chores.map((t) => (
         <Row key={t.id} style={styles.chore}>
           <Text style={[T.name, { flex: 1 }]}>{t.title}{t.timeLeft > 0 ? <Text style={T.small}>  · {Math.ceil(t.timeLeft)}s</Text> : null}</Text>

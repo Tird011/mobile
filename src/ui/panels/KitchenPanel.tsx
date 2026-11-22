@@ -34,6 +34,12 @@ export function KitchenPanel({ s, client, catalog, onLocal }: { s: Snapshot; cli
     const todo = s.orders.filter((o) => o.status !== 'CANCELLED' && o.lines.some((l) => !l.cooked && !l.cooking) && ['PENDING', 'COOKING'].includes(o.status));
     return (
       <Panel title="Kitchen">
+        {s.staff.filter((w) => w.role === 'COOK' && w.hired).map((w) => (
+          <View key={w.id} style={{ gap: 4 }}>
+            <Text style={[T.small, { color: C.tealDark }]}>{w.name}: {w.resting ? 'resting' : w.activity}</Text>
+            {(w.progress ?? 0) > 0 ? <Bar value={w.progress ?? 0} color={C.teal} height={6} /> : null}
+          </View>
+        ))}
         {todo.length ? todo.slice(0, 4).map((o) => (
           <Row key={o.id} style={styles.ticket}>
             <View style={{ flex: 1 }}>

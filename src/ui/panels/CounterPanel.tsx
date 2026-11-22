@@ -14,6 +14,7 @@ export function CounterPanel({ s, client }: { s: Snapshot; client: GameClient })
   const readyDelivery = s.orders.filter((o) => o.status === 'READY' && o.delivery).length;
   const freeTables = s.shop.tables.filter((t) => !t.occupant && t.dirt <= 0.001).length;
   const first = line[0];
+  const joy = s.staff.find((w) => w.role === 'SERVER' && w.hired && !w.resting);
   return (
     <Panel title="Counter" right={<Text style={T.small}>{freeTables} clean table{freeTables === 1 ? '' : 's'} free</Text>}>
       {first ? (
@@ -36,6 +37,7 @@ export function CounterPanel({ s, client }: { s: Snapshot; client: GameClient })
           ))}
         </ScrollView>
       ) : null}
+      {joy ? <Text style={[T.small, { color: C.tealDark }]}>{joy.name}: {joy.activity}</Text> : null}
       {readyDelivery ? <Text style={[T.small, { color: C.blue }]}>{readyDelivery} delivery order{readyDelivery > 1 ? 's' : ''} ready: go to Delivery</Text> : null}
     </Panel>
   );
